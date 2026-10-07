@@ -1,0 +1,3 @@
+repository "posesArtisticas/posesArtisticas@4673804987903@cloud"
+  path "/"
+    smartbranch "/main"
