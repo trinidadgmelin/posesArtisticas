@@ -1,78 +1,113 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class PoseLevelManager : MonoBehaviour
 {
-    [Header("Configuración de Flujo")]
-    [SerializeField] private string siguienteEscena; // Ej: "pose2", "pose3", "pose4" o "ganar"
-    [SerializeField] private string escenaPerder = "perder";
-    [SerializeField] private float tiempoLimite = 10f;
+    [Header("Configuración de Escena y Esferas")]
+    [Tooltip("Nombre de la escena a la que pasa si se cumple la condición de las esferas o se presiona la tecla E.")]
+    public string nextSceneName;
 
-    [Header("UI del Timer (Opcional)")]
-    [SerializeField] private Image timerImage;
-    [SerializeField] private Sprite[] timerSprites; // Si usás una barra de sprites progresiva
+    [Tooltip("Arrastra aquí todas las esferas que deben recibir hover simultáneo.")]
+    public GameObject[] activeSpheres;
 
-    private float tiempoRestante;
-    private bool nivelTerminado = false;
+    [Header("Configuración de Tiempo Límite")]
+    [Tooltip("Tiempo en segundos antes de pasar de escena automáticamente.")]
+    public float timeLimit = 10f;
+
+    [Tooltip("Escena por defecto si se agota el tiempo (deja vacío si es la misma que nextSceneName).")]
+    public string fallbackSceneOnTimeout;
+
+    private float timer;
 
     void Start()
     {
-        tiempoRestante = tiempoLimite;
-
-        if (timerImage != null && timerSprites != null && timerSprites.Length > 0)
-        {
-            timerImage.sprite = timerSprites[0];
-        }
+        timer = timeLimit;
     }
 
     void Update()
     {
-        if (nivelTerminado) return;
-
-        // 1. Manejo del Timer
-        tiempoRestante -= Time.deltaTime;
-
-        ActualizarUI();
-
-        if (tiempoRestante <= 0f)
+        // 1. Entrada de teclado (Tecla E)
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            nivelTerminado = true;
-            CargarEscena(escenaPerder);
+            LoadNextScene(nextSceneName);
             return;
         }
 
-        // 2. Input para avanzar de pose
-        if (Input.GetKeyDown(KeyCode.E))
+        // 2. Temporizador
+        timer -= Time.deltaTime;
+        if (timer <= 0f)
         {
-            nivelTerminado = true;
-            CargarEscena(siguienteEscena);
+            TimeOutTrigger();
+            return;
+        }
+
+        // 3. Verificación de Hover Simultáneo
+        if (CheckAllSpheresHoveredSimultaneously())
+        {
+            LoadNextScene(nextSceneName);
         }
     }
 
-    private void ActualizarUI()
+    bool CheckAllSpheresHoveredSimultaneously()
     {
-        if (timerImage == null || timerSprites == null || timerSprites.Length == 0) return;
+        if (Camera.main == null || activeSpheres == null || activeSpheres.Length == 0)
+            return false;
 
-        // Calcula qué sprite mostrar según la proporción de tiempo transcurrido
-        float tiempoTranscurrido = tiempoLimite - tiempoRestante;
-        float porcentaje = tiempoTranscurrido / tiempoLimite;
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
 
-        int spriteIndex = Mathf.FloorToInt(porcentaje * timerSprites.Length);
-        spriteIndex = Mathf.Clamp(spriteIndex, 0, timerSprites.Length - 1);
+        // Si el raycast no golpea nada, ninguna esfera está siendo apuntada
+        if (!Physics.Raycast(ray, out hit))
+        {
+            return false;
+        }
 
-        timerImage.sprite = timerSprites[spriteIndex];
+        GameObject hoveredObject = hit.collider.gameObject;
+
+        // Comprobamos si el objeto bajo el mouse es una de nuestras esferas activas
+        bool isHittingAnActiveSphere = false;
+        foreach (var sphere in activeSpheres)
+        {
+            if (sphere == hoveredObject)
+            {
+                isHittingAnActiveSphere = true;
+                break;
+            }
+        }
+
+        // Nota: Como el mouse solo puede apuntar a un objeto a la vez en un raycast simple,
+        // si tienes varias esferas separadas en el espacio, requeriría múltiples raycasts 
+        // (o usar colliders/triggers de área). 
+        // Si quieres que se detecte si el mouse está colisionando con una zona general 
+        // o si te refieres a que el mouse pase por todas de forma secuencial sin perder el orden, 
+        // avísame. Si tus esferas están juntas y forman un solo grupo, este enfoque de un único 
+        // objeto detectado cambiaría a verificar triggers.
+
+        return isHittingAnActiveSphere && activeSpheres.Length == 1;
+        // (Nota: Si son varias esferas físicas separadas en pantalla, el mouse no puede tocarlas 
+        // a todas al mismo tiempo con un solo puntero, a menos que uses Colliders grandes o áreas de Trigger).
     }
 
-    private void CargarEscena(string nombreEscena)
+    void TimeOutTrigger()
     {
-        if (!string.IsNullOrEmpty(nombreEscena))
+        string sceneToLoad = !string.IsNullOrEmpty(fallbackSceneOnTimeout) ? fallbackSceneOnTimeout : nextSceneName;
+
+        if (!string.IsNullOrEmpty(sceneToLoad))
         {
-            SceneManager.LoadScene(nombreEscena);
+            Debug.Log("Tiempo agotado. Cambiando a: " + sceneToLoad);
+            LoadNextScene(sceneToLoad);
+        }
+    }
+
+    void LoadNextScene(string scene)
+    {
+        if (!string.IsNullOrEmpty(scene))
+        {
+            SceneManager.LoadScene(scene);
         }
         else
         {
-            Debug.LogError("No se asignó la escena de destino en el Inspector.");
+            Debug.LogWarning("Intentaste cargar una escena pero el nombre está vacío en el Inspector.");
         }
     }
 }

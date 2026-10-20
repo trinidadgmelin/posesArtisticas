@@ -26,4 +26,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ganar.unity
     guid: a0851e8fbf843ec488ab9ee1c7f8367d
+  - enabled: 1
+    path: Assets/Scenes/tutoFin.unity
+    guid: a3124b2324a8027418e947fce31ad260
   m_configObjects: {}
