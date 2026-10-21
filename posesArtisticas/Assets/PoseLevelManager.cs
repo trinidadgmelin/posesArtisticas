@@ -1,35 +1,40 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class PoseLevelManager : MonoBehaviour
 {
-    [Header("Configuración de Escena y Esferas")]
-    [Tooltip("Nombre de la escena a la que pasa si se cumple la condición de las esferas o se presiona la tecla E.")]
-    public string nextSceneName;
-
-    [Tooltip("Arrastra aquí todas las esferas que deben recibir hover simultáneo.")]
+    [Header("Esferas Activas (Deben tocarse TODAS AL MISMO TIEMPO)")]
     public GameObject[] activeSpheres;
 
-    [Header("Configuración de Tiempo Límite")]
-    [Tooltip("Tiempo en segundos antes de pasar de escena automáticamente.")]
-    public float timeLimit = 10f;
+    [Header("UI y Escenas")]
+    public TextMeshProUGUI scoreText;
+    public string nextSceneName;
+    public string skipSceneName;
+    public string winSceneName = "ganar";       // Escena a la que va si llega a 100 puntos
+    public string timeoutSceneName = "perder";   // Escena a la que va si se acaba el tiempo
 
-    [Tooltip("Escena por defecto si se agota el tiempo (deja vacío si es la misma que nextSceneName).")]
-    public string fallbackSceneOnTimeout;
+    [Header("Configuración de Tiempo Límite")]
+    public float timeLimit = 30f;
 
     private float timer;
+    private bool nivelCompletado = false;
+    private static int currentScore = 0; // Static para que se acumule entre escenas
 
     void Start()
     {
         timer = timeLimit;
+        UpdateScoreUI();
     }
 
     void Update()
     {
-        // 1. Entrada de teclado (Tecla E)
+        if (nivelCompletado) return;
+
+        // 1. Tecla E para saltar nivel (atajo preservado)
         if (Input.GetKeyDown(KeyCode.E))
         {
-            LoadNextScene(nextSceneName);
+            LoadScene(!string.IsNullOrEmpty(skipSceneName) ? skipSceneName : nextSceneName);
             return;
         }
 
@@ -41,73 +46,91 @@ public class PoseLevelManager : MonoBehaviour
             return;
         }
 
-        // 3. Verificación de Hover Simultáneo
-        if (CheckAllSpheresHoveredSimultaneously())
-        {
-            LoadNextScene(nextSceneName);
-        }
+        // 3. Verificación estricta de hover simultáneo
+        VerificarHoverSimultaneo();
     }
 
-    bool CheckAllSpheresHoveredSimultaneously()
+    void VerificarHoverSimultaneo()
     {
-        if (Camera.main == null || activeSpheres == null || activeSpheres.Length == 0)
-            return false;
+        if (activeSpheres == null || activeSpheres.Length == 0) return;
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
+        bool todasTocadasAlMismoTiempo = true;
+        int sumaNivelParcial = 0;
 
-        // Si el raycast no golpea nada, ninguna esfera está siendo apuntada
-        if (!Physics.Raycast(ray, out hit))
-        {
-            return false;
-        }
-
-        GameObject hoveredObject = hit.collider.gameObject;
-
-        // Comprobamos si el objeto bajo el mouse es una de nuestras esferas activas
-        bool isHittingAnActiveSphere = false;
         foreach (var sphere in activeSpheres)
         {
-            if (sphere == hoveredObject)
+            if (sphere != null)
             {
-                isHittingAnActiveSphere = true;
-                break;
+                valorEsfera val = sphere.GetComponent<valorEsfera>();
+                if (val != null)
+                {
+                    if (!val.isHovered)
+                    {
+                        todasTocadasAlMismoTiempo = false;
+                        break;
+                    }
+                    else
+                    {
+                        sumaNivelParcial += val.scoreValue;
+                    }
+                }
+                else
+                {
+                    todasTocadasAlMismoTiempo = false;
+                    break;
+                }
             }
         }
 
-        // Nota: Como el mouse solo puede apuntar a un objeto a la vez en un raycast simple,
-        // si tienes varias esferas separadas en el espacio, requeriría múltiples raycasts 
-        // (o usar colliders/triggers de área). 
-        // Si quieres que se detecte si el mouse está colisionando con una zona general 
-        // o si te refieres a que el mouse pase por todas de forma secuencial sin perder el orden, 
-        // avísame. Si tus esferas están juntas y forman un solo grupo, este enfoque de un único 
-        // objeto detectado cambiaría a verificar triggers.
+        // Si TODAS las esferas de la lista están siendo tocadas al mismo tiempo
+        if (todasTocadasAlMismoTiempo)
+        {
+            nivelCompletado = true;
+            currentScore += sumaNivelParcial; // Sumamos al acumulado global
+            UpdateScoreUI();
 
-        return isHittingAnActiveSphere && activeSpheres.Length == 1;
-        // (Nota: Si son varias esferas físicas separadas en pantalla, el mouse no puede tocarlas 
-        // a todas al mismo tiempo con un solo puntero, a menos que uses Colliders grandes o áreas de Trigger).
+            Debug.Log("¡Pose simultánea completada! Puntos totales acumulados: " + currentScore);
+
+            // Verificamos si con esto alcanzó o superó los 100 puntos
+            if (currentScore >= 100)
+            {
+                Invoke("WinGameCompletely", 1f);
+            }
+            else
+            {
+                Invoke("WinGame", 1f);
+            }
+        }
+    }
+
+    void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Puntos: " + currentScore;
+        }
+    }
+
+    void WinGame()
+    {
+        LoadScene(nextSceneName);
+    }
+
+    void WinGameCompletely()
+    {
+        LoadScene(winSceneName);
     }
 
     void TimeOutTrigger()
     {
-        string sceneToLoad = !string.IsNullOrEmpty(fallbackSceneOnTimeout) ? fallbackSceneOnTimeout : nextSceneName;
-
-        if (!string.IsNullOrEmpty(sceneToLoad))
-        {
-            Debug.Log("Tiempo agotado. Cambiando a: " + sceneToLoad);
-            LoadNextScene(sceneToLoad);
-        }
+        LoadScene(timeoutSceneName);
     }
 
-    void LoadNextScene(string scene)
+    void LoadScene(string scene)
     {
         if (!string.IsNullOrEmpty(scene))
         {
             SceneManager.LoadScene(scene);
-        }
-        else
-        {
-            Debug.LogWarning("Intentaste cargar una escena pero el nombre está vacío en el Inspector.");
         }
     }
 }
