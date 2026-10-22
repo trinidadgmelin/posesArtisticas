@@ -29,4 +29,22 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/tutoFin.unity
     guid: a3124b2324a8027418e947fce31ad260
+  - enabled: 1
+    path: Assets/Scenes/nivel1.unity
+    guid: 58efe8c68bf00aa49b9a4b1b58b59ef4
+  - enabled: 1
+    path: Assets/Scenes/nivel2.unity
+    guid: d1adef301f7b6504cad3074101f63e8c
+  - enabled: 1
+    path: Assets/Scenes/nivel3.unity
+    guid: 5d6b918875f496346af0bdca5ff8ec86
+  - enabled: 1
+    path: Assets/Scenes/nivel4.unity
+    guid: e8ef00a745f8c894495b81d61d99c263
+  - enabled: 1
+    path: Assets/Scenes/nivel5.unity
+    guid: ea7f9bc8ae267ee42af0e81e084cb9bc
+  - enabled: 1
+    path: Assets/Scenes/poseCuadro.unity
+    guid: 5e7f4002d465e394b973c66e600c8635
   m_configObjects: {}

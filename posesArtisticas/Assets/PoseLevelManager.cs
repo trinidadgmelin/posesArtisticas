@@ -4,49 +4,64 @@ using TMPro;
 
 public class PoseLevelManager : MonoBehaviour
 {
+    [Header("Identificación del Nivel")]
+    [Tooltip("Poné 1 para el Nivel 1, 2 para el Nivel 2, etc.")]
+    public int levelIndex = 1; // <-- NUEVO: Identifica cuál es este nivel
+
+    public static int lastCompletedLevel = 1; // <-- NUEVO: Recuerda cuál fue el último nivel ganado
+
     [Header("Esferas Activas (Deben tocarse TODAS AL MISMO TIEMPO)")]
     public GameObject[] activeSpheres;
 
     [Header("UI y Escenas")]
     public TextMeshProUGUI scoreText;
-    public string nextSceneName;
+    public TextMeshProUGUI timerText;
+    public string nextSceneName = "RevelacionCuadro"; // Apunta siempre a la escena del cuadro
     public string skipSceneName;
-    public string winSceneName = "ganar";       // Escena a la que va si llega a 100 puntos
-    public string timeoutSceneName = "perder";   // Escena a la que va si se acaba el tiempo
+    public string winSceneName = "ganar";
+    public string timeoutSceneName = "perder";
 
     [Header("Configuración de Tiempo Límite")]
     public float timeLimit = 30f;
 
     private float timer;
     private bool nivelCompletado = false;
-    private static int currentScore = 0; // Static para que se acumule entre escenas
+    private static int currentScore = 0;
 
     void Start()
     {
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (currentScene == "tutoFin" || currentScene == winSceneName || currentScene == timeoutSceneName)
+        {
+            currentScore = 0;
+        }
+
         timer = timeLimit;
         UpdateScoreUI();
+        UpdateTimerUI();
     }
 
     void Update()
     {
         if (nivelCompletado) return;
 
-        // 1. Tecla E para saltar nivel (atajo preservado)
         if (Input.GetKeyDown(KeyCode.E))
         {
             LoadScene(!string.IsNullOrEmpty(skipSceneName) ? skipSceneName : nextSceneName);
             return;
         }
 
-        // 2. Temporizador
         timer -= Time.deltaTime;
+        UpdateTimerUI();
+
         if (timer <= 0f)
         {
+            timer = 0f;
+            UpdateTimerUI();
             TimeOutTrigger();
             return;
         }
 
-        // 3. Verificación estricta de hover simultáneo
         VerificarHoverSimultaneo();
     }
 
@@ -82,16 +97,17 @@ public class PoseLevelManager : MonoBehaviour
             }
         }
 
-        // Si TODAS las esferas de la lista están siendo tocadas al mismo tiempo
         if (todasTocadasAlMismoTiempo)
         {
             nivelCompletado = true;
-            currentScore += sumaNivelParcial; // Sumamos al acumulado global
+            currentScore += sumaNivelParcial;
             UpdateScoreUI();
 
-            Debug.Log("¡Pose simultánea completada! Puntos totales acumulados: " + currentScore);
+            // <-- NUEVO: Guardamos qué nivel se completó justo antes de cambiar de escena
+            lastCompletedLevel = levelIndex;
 
-            // Verificamos si con esto alcanzó o superó los 100 puntos
+            Debug.Log("¡Pose completada del Nivel " + levelIndex + "! Puntos totales: " + currentScore);
+
             if (currentScore >= 100)
             {
                 Invoke("WinGameCompletely", 1f);
@@ -108,6 +124,14 @@ public class PoseLevelManager : MonoBehaviour
         if (scoreText != null)
         {
             scoreText.text = "Puntos: " + currentScore;
+        }
+    }
+
+    void UpdateTimerUI()
+    {
+        if (timerText != null)
+        {
+            timerText.text = "Tiempo: " + Mathf.Ceil(timer).ToString();
         }
     }
 

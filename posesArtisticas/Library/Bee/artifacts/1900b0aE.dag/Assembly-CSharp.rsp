@@ -354,8 +354,10 @@
 -analyzer:"C:/Program Files/Unity/Hub/Editor/2022.3.62f2/Editor/Data/Tools/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll"
 -analyzer:"C:/Program Files/Unity/Hub/Editor/2022.3.62f2/Editor/Data/Tools/Unity.SourceGenerators/Unity.SourceGenerators.dll"
 "Assets/cambioInicio.cs"
+"Assets/cambioNivel1.cs"
 "Assets/cambioPose1.cs"
 "Assets/PoseLevelManager.cs"
+"Assets/poseManager.cs"
 "Assets/valorEsfera.cs"
 -langversion:9.0
 /deterministic
